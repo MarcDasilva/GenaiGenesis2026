@@ -7,6 +7,8 @@ import os
 from typing import Any
 
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from .client import NCBIClient, NCBIError
 
@@ -14,6 +16,28 @@ mcp = FastMCP(
     name="ncbi-datasets",
     version="2.0.0",
 )
+
+
+# ----- HTTP-only routes (no MCP/SSE) -----
+# Use these for health checks; /mcp requires Accept: text/event-stream for MCP clients.
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health(_request: Request) -> JSONResponse:
+    """Health check. Safe to curl without Accept: text/event-stream."""
+    return JSONResponse({"status": "healthy", "service": "ncbi-datasets-mcp", "version": "2.0.0"})
+
+
+@mcp.custom_route("/", methods=["GET"])
+async def root(_request: Request) -> JSONResponse:
+    """Root info. MCP endpoint is at /mcp (requires Accept: text/event-stream)."""
+    return JSONResponse({
+        "service": "ncbi-datasets-mcp",
+        "version": "2.0.0",
+        "mcp_endpoint": "/mcp",
+        "mcp_note": "MCP clients must send Accept: text/event-stream when connecting to /mcp",
+        "health": "/health",
+    })
 
 
 def _client() -> NCBIClient:

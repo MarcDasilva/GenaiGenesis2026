@@ -1,6 +1,13 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect, useMemo, Suspense } from "react";
+import {
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  Suspense,
+} from "react";
 import { Canvas } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -114,7 +121,10 @@ export type DNAViewerProps = {
   onModelLoaded?: () => void;
 };
 
-export default function DNAViewer({ orbitCenter, onModelLoaded }: DNAViewerProps = {}) {
+export default function DNAViewer({
+  orbitCenter,
+  onModelLoaded,
+}: DNAViewerProps = {}) {
   // Start loading the GLB immediately so it’s ready under the loading screen
   useGLTF.preload(DNA_MODEL_URL);
   const [contextLost, setContextLost] = useState(false);
@@ -221,13 +231,13 @@ export default function DNAViewer({ orbitCenter, onModelLoaded }: DNAViewerProps
             top: "50%",
             width: "145%",
             height: "145%",
-            transform: `translate(calc(-50%), calc(-50% + 5%)) rotate(-${VIEW_TILT_DEG}deg)`,
+            transform: `translate(calc(-50%), calc(-50% + 7%)) rotate(-${VIEW_TILT_DEG}deg)`,
           }}
         >
           <Canvas
             key={canvasKey}
             style={{ width: "100%", height: "100%" }}
-            camera={{ position: [0, 0, 12], fov: 50 }}
+            camera={{ position: [0, 0, 12], fov: 65 }}
             gl={{
               alpha: true,
               antialias: true,

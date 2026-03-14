@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo, Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -29,7 +29,9 @@ function clearModelCache() {
   }
 }
 
-function DNAModel() {
+type DNAModelProps = { onModelLoaded?: () => void };
+
+function DNAModel({ onModelLoaded }: DNAModelProps) {
   const { scene: rawScene } = useGLTF(DNA_MODEL_URL);
 
   const { clone, center, scale } = useMemo(() => {
@@ -47,11 +49,22 @@ function DNAModel() {
 
   useEffect(() => {
     const color = new THREE.Color(DNA_COLOR);
+    let meshIndex = 0;
     clone.traverse((node) => {
-      const obj = node as unknown as {
+      const obj = node as THREE.Object3D & {
         material?: Material | Material[];
-        renderOrder?: number;
+        geometry?: THREE.BufferGeometry;
       };
+      // Prevent any part of the model from being culled (stops dots disappearing
+      // when bounding boxes are tight or at certain camera angles)
+      obj.frustumCulled = false;
+      // Ensure geometry has valid bounds so transparent sort order is correct
+      if (obj instanceof THREE.Mesh && obj.geometry) {
+        if (!obj.geometry.boundingSphere) obj.geometry.computeBoundingSphere();
+        if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
+        // Stable renderOrder per mesh so draw order is deterministic (reduces flicker)
+        obj.renderOrder = meshIndex++;
+      }
       if (obj.material) {
         const mats = Array.isArray(obj.material)
           ? obj.material
@@ -65,9 +78,13 @@ function DNAModel() {
           m.depthTest = true;
         });
       }
-      if (typeof obj.renderOrder === "number") obj.renderOrder = 0;
     });
   }, [clone]);
+
+  // Notify parent that GLB has loaded and is ready (runs after Suspense resolves)
+  useEffect(() => {
+    onModelLoaded?.();
+  }, [onModelLoaded]);
 
   return (
     <group scale={scale} position={[0, 0, 0]}>
@@ -93,9 +110,13 @@ const buttonStyle: React.CSSProperties = {
 export type DNAViewerProps = {
   /** World-space point to orbit the camera around. Defaults to [0,0,0] (center of DNA after centering). */
   orbitCenter?: [number, number, number];
+  /** Called when the DNA GLB has finished loading (so splash can fade after this). */
+  onModelLoaded?: () => void;
 };
 
-export default function DNAViewer({ orbitCenter }: DNAViewerProps = {}) {
+export default function DNAViewer({ orbitCenter, onModelLoaded }: DNAViewerProps = {}) {
+  // Start loading the GLB immediately so it’s ready under the loading screen
+  useGLTF.preload(DNA_MODEL_URL);
   const [contextLost, setContextLost] = useState(false);
   const [canvasKey, setCanvasKey] = useState(0);
   const lossCountRef = useRef(0);
@@ -213,6 +234,7 @@ export default function DNAViewer({ orbitCenter }: DNAViewerProps = {}) {
               powerPreference: "default",
               failIfMajorPerformanceCaveat: false,
               preserveDrawingBuffer: false,
+              logarithmicDepthBuffer: true,
             }}
             onCreated={({ gl, scene }) => {
               gl.setClearColor(0x000000, 0);
@@ -243,7 +265,9 @@ export default function DNAViewer({ orbitCenter }: DNAViewerProps = {}) {
               minPolarAngle={Math.PI / 2}
               maxPolarAngle={Math.PI / 2}
             />
-            <DNAModel />
+            <Suspense fallback={null}>
+              <DNAModel onModelLoaded={onModelLoaded} />
+            </Suspense>
           </Canvas>
         </div>
       </div>

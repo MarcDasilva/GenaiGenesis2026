@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import dynamic from "next/dynamic";
 import { AppSidebar } from "@/components/app-sidebar";
-import { ChatbotPanel } from "@/components/chatbot-panel";
+import { ChatbotPanel, type ChatMessage } from "@/components/chatbot-panel";
 import { ProjectsPanel } from "@/components/projects-panel";
 import { CallioLabsSplash } from "@/components/callio-labs-splash";
 import GlassSurface from "@/components/GlassSurface";
@@ -25,6 +25,71 @@ export function DashboardContent() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [panelsOpen, setPanelsOpen] = useState(false);
   const [activePage, setActivePage] = useState<Page>("study");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  const handleNewMessage = useCallback(
+    async (userText: string) => {
+      const userMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: userText,
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setIsLoading(true);
+
+      try {
+        const res = await fetch("/api/langflow/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            input_value: userText,
+            ...(sessionId ? { session_id: sessionId } : {}),
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              content: `Error: ${data.error ?? "Something went wrong"}`,
+            },
+          ]);
+          return;
+        }
+
+        if (data.session_id) {
+          setSessionId(data.session_id);
+        }
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: data.message ?? "No response received.",
+          },
+        ]);
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: `Error: ${err instanceof Error ? err.message : "Network error"}`,
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [sessionId],
+  );
 
   const headerTitle = activePage === "projects" ? "Projects" : "Genome Analysis";
 
@@ -139,7 +204,12 @@ export function DashboardContent() {
                       <div className="h-24" />
                     </GlassSurface>
                   </aside>
-                  <ChatbotPanel onSend={() => setHasStarted(true)} />
+                  <ChatbotPanel
+                    onSend={() => setHasStarted(true)}
+                    messages={messages}
+                    onNewMessage={handleNewMessage}
+                    isLoading={isLoading}
+                  />
                   <div
                     className="transition-[flex-grow] duration-[1400ms] ease-in-out"
                     style={{

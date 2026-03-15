@@ -38,7 +38,9 @@ export function NavDocuments({
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel className="text-black">Genome Analysis</SidebarGroupLabel>
+      <SidebarGroupLabel className="text-black">
+        Genome Analysis
+      </SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <SidebarMenuItem key={item.name}>

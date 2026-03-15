@@ -1,43 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import GlassSurface from "@/components/GlassSurface";
-import { IconChevronDown, IconSend } from "@tabler/icons-react";
+import { IconSend, IconLoader2 } from "@tabler/icons-react";
 
-const MODELS = [
-  { id: "claude", name: "Claude", src: "/claude (1).svg" },
-  { id: "openai", name: "OpenAI", src: "/openai.png" },
-  { id: "gemini", name: "Gemini", src: "/gemini (1).png" },
-  { id: "deepseek", name: "DeepSeek", src: "/deepseek (1).png" },
-] as const;
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
 
-type ModelId = (typeof MODELS)[number]["id"];
+interface ChatbotPanelProps {
+  onSend?: () => void;
+  messages: ChatMessage[];
+  onNewMessage: (userText: string) => void;
+  isLoading: boolean;
+}
 
-export function ChatbotPanel({ onSend }: { onSend?: () => void }) {
-  const [selectedModel, setSelectedModel] = useState<ModelId>("claude");
+export function ChatbotPanel({
+  onSend,
+  messages,
+  onNewMessage,
+  isLoading,
+}: ChatbotPanelProps) {
   const [input, setInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
-    if (!text) return;
+    if (!text || isLoading) return;
     setInput("");
     onSend?.();
+    onNewMessage(text);
   };
 
   return (
-    <aside className="w-full max-w-2xl px-4">
+    <aside className="w-full max-w-2xl px-4 flex flex-col gap-3">
+      {messages.length > 0 && (
+        <GlassSurface
+          width={"100%" as unknown as number}
+          height={"fit-content" as unknown as number}
+          borderRadius={16}
+          className="overflow-hidden"
+          contentClassName="!flex !flex-col !items-stretch !justify-start !p-0 !gap-0"
+        >
+          <div className="max-h-96 overflow-y-auto px-4 py-3 space-y-3">
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-black/10 text-black"
+                      : "bg-white/60 text-black border border-black/5"
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap wrap-break-word">
+                    {msg.content}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="flex items-center gap-2 rounded-xl bg-white/60 px-3.5 py-2.5 text-sm text-black/60 border border-black/5">
+                  <IconLoader2 className="size-4 animate-spin" />
+                  <span>Analyzing…</span>
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+        </GlassSurface>
+      )}
+
       <form onSubmit={handleSubmit} className="w-full">
         <GlassSurface
-          width="100%"
-          height="fit-content"
+          width={"100%" as unknown as number}
+          height={"fit-content" as unknown as number}
           borderRadius={16}
           className="overflow-hidden"
           contentClassName="!flex !flex-col !items-stretch !justify-center !p-0 !gap-0"
@@ -47,68 +97,24 @@ export function ChatbotPanel({ onSend }: { onSend?: () => void }) {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="How Can I Help You?"
+              placeholder="Ask about genome primer design…"
               className="w-full bg-transparent text-sm text-black placeholder:text-black/50 outline-none md:text-base"
               aria-label="Message"
+              disabled={isLoading}
             />
-            <div className="flex items-center justify-between gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-2 rounded-lg border-black/15 bg-black/5 px-3 text-black hover:bg-black/10 hover:text-black aria-expanded:text-black data-[state=open]:text-black data-[state=open]:bg-black/10"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={
-                        MODELS.find((m) => m.id === selectedModel)?.src ??
-                        MODELS[0].src
-                      }
-                      alt=""
-                      width={20}
-                      height={20}
-                      className="size-5 shrink-0 rounded object-cover"
-                    />
-                    <span className="text-sm font-medium">
-                      {MODELS.find((m) => m.id === selectedModel)?.name ??
-                        MODELS[0].name}
-                    </span>
-                    <IconChevronDown className="size-4 shrink-0 opacity-70" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="min-w-[--radix-dropdown-menu-trigger-width] bg-white dark:bg-neutral-900"
-                >
-                  {MODELS.map((model) => (
-                    <DropdownMenuItem
-                      key={model.id}
-                      onClick={() => setSelectedModel(model.id)}
-                      className="flex items-center gap-2 focus:bg-black/10 focus:text-black"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={model.src}
-                        alt=""
-                        width={24}
-                        height={24}
-                        className="size-6 shrink-0 rounded-full object-cover"
-                      />
-                      <span>{model.name}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <div className="flex items-center justify-end gap-2">
               <Button
                 type="submit"
                 size="icon-sm"
                 className="size-8 shrink-0 rounded-lg bg-black/15 text-black hover:bg-black/25"
-                disabled={!input.trim()}
+                disabled={!input.trim() || isLoading}
                 aria-label="Send"
               >
-                <IconSend className="size-4 text-black stroke-[2.5]" />
+                {isLoading ? (
+                  <IconLoader2 className="size-4 text-black animate-spin" />
+                ) : (
+                  <IconSend className="size-4 text-black stroke-[2.5]" />
+                )}
               </Button>
             </div>
           </div>

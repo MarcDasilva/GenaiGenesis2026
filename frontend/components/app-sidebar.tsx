@@ -33,7 +33,12 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  onNavItemClick?: (item: { title: string; url: string }) => void;
+  onNewStudy?: () => void;
+};
+
+export function AppSidebar({ onNavItemClick, onNewStudy, ...props }: AppSidebarProps) {
   const { data: session } = useSession();
   const user = session?.user
     ? {
@@ -48,7 +53,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     navMain: [
       {
         title: "Dashboard",
-        url: "/dashboard",
+        url: "#",
         icon: IconDashboard,
       },
       {
@@ -178,7 +183,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={data.navMain} onItemClick={onNavItemClick} onNewStudy={onNewStudy} />
         <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>

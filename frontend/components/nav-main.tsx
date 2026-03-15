@@ -11,12 +11,16 @@ import {
 
 export function NavMain({
   items,
+  onItemClick,
+  onNewStudy,
 }: {
   items: {
     title: string
     url: string
     icon?: Icon
   }[]
+  onItemClick?: (item: { title: string; url: string }) => void
+  onNewStudy?: () => void
 }) {
   return (
     <SidebarGroup>
@@ -25,6 +29,7 @@ export function NavMain({
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="New Study"
+              onClick={() => onNewStudy?.()}
               className="bg-primary/80 text-primary-foreground hover:bg-primary hover:text-primary-foreground active:bg-primary active:text-primary-foreground min-w-8 duration-200 ease-linear"
             >
               <IconCirclePlusFilled />
@@ -35,10 +40,22 @@ export function NavMain({
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title}>
-                {item.icon && <item.icon />}
-                <span>{item.title}</span>
-              </SidebarMenuButton>
+              {item.url && item.url !== "#" ? (
+                <SidebarMenuButton tooltip={item.title} asChild>
+                  <a href={item.url}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </a>
+                </SidebarMenuButton>
+              ) : (
+                <SidebarMenuButton
+                  tooltip={item.title}
+                  onClick={() => onItemClick?.(item)}
+                >
+                  {item.icon && <item.icon />}
+                  <span>{item.title}</span>
+                </SidebarMenuButton>
+              )}
             </SidebarMenuItem>
           ))}
         </SidebarMenu>

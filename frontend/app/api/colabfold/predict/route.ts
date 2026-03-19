@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Allow this route to run up to 15 min (e.g. Vercel Pro). Omit or reduce on free tier.
-export const maxDuration = 900;
+// Hobby plan caps serverless functions at 300 s; this route only spawns a job
+// and returns a job_id, so 60 s is plenty.
+export const maxDuration = 60;
 
 const PREDICT_URL = (
   process.env.NEXT_PUBLIC_COLABFOLD_PREDICT_URL ||
